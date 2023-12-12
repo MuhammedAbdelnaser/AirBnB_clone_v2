@@ -1,13 +1,37 @@
 #!/usr/bin/python3
-"""
-Fabric script based on the file 1-pack_web_static.py that distributes an
-archive to the web servers
-"""
+'''fcreates and distributes an archive to your web servers, using deploy():
+'''
 
-from fabric.api import put, run, env
-from os.path import exists
+import os
+from datetime import datetime
+from fabric.api import env, local, put, run, runs_once
+
 
 env.hosts = ['54.172.219.46', '52.91.168.169']
+
+@runs_once
+def do_pack():
+    """Archives the static files."""
+    if not os.path.isdir("versions"):
+        os.mkdir("versions")
+    cur_time = datetime.now()
+    output = "versions/web_static_{}{}{}{}{}{}.tgz".format(
+        cur_time.year,
+        cur_time.month,
+        cur_time.day,
+        cur_time.hour,
+        cur_time.minute,
+        cur_time.second
+    )
+    try:
+        print("Packing web_static to {}".format(output))
+        local("tar -cvzf {} web_static".format(output))
+        archize_size = os.stat(output).st_size
+        print("web_static packed: {} -> {} Bytes".format(output, archize_size))
+    except Exception:
+        output = None
+    return output
+
 
 def do_deploy(archive_path):
     """Deploys the static files to the host servers.
@@ -34,3 +58,10 @@ def do_deploy(archive_path):
     except Exception:
         ret = False
     return ret
+
+
+def deploy():
+    """Archives and deploys the static files to the host servers.
+    """
+    archive_path = do_pack()
+    return do_deploy(archive_path) if archive_path else False
